@@ -1,46 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="30dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="36dp"
+    android:gravity="center_horizontal">
 
+    <!-- Status -->
     <TextView
         android:id="@+id/txtStatus"
-        android:text="Câmera não conectada"
-        android:textSize="18sp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="16dp"/>
+        android:paddingBottom="12dp"
+        android:text="Câmera não conectada"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:gravity="center"/>
 
-    <Button
-        android:id="@+id/btnConnect"
-        android:text="Conectar câmera"
+    <!-- Botões principais -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:weightSum="2">
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="16dp"/>
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Conectar"/>
 
-    <Button
-        android:id="@+id/btnPhoto"
-        android:text="📸 Tirar foto"
-        android:enabled="false"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        <Button
+            android:id="@+id/btnPhoto"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="📸 Foto"/>
+    </LinearLayout>
 
     <Button
         android:id="@+id/btnFlash"
-        android:text="💡 Flash"
-        android:enabled="false"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        android:text="💡 Flash"
+        android:layout_marginTop="8dp"/>
 
+    <!-- Barra de progresso -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="100"
+        android:progress="0"
+        android:visibility="gone"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Spinner circular para "esperando" -->
+    <ProgressBar
+        android:id="@+id/loadingSpinner"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_marginTop="12dp"/>
+
+    <!-- Texto de progresso -->
+    <TextView
+        android:id="@+id/txtProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Aguardando..."
+        android:textSize="16sp"
+        android:gravity="center"
+        android:layout_marginTop="8dp"/>
+
+    <!-- Imagem -->
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:adjustViewBounds="true"
-        android:scaleType="fitCenter"/>
+        android:scaleType="fitCenter"
+        android:layout_marginTop="16dp"/>
 </LinearLayout>
