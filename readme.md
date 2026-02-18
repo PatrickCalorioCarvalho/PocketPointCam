@@ -1,194 +1,199 @@
-# 📷 PocketPointCam
+# 📷 PocketPointCam (BLE Version)
 
-PocketPointCam é um projeto **IoT + Mobile** que transforma um **ESP32-CAM** em uma câmera portátil controlada por um aplicativo **Android**. O app se conecta diretamente ao ponto de acesso (AP) criado pelo ESP32-CAM e permite **verificar a câmera, tirar fotos e ligar/desligar o flash**, tudo de forma simples e offline.
+PocketPointCam é um projeto **IoT + Mobile** que transforma um
+**ESP32-CAM** em uma câmera portátil controlada por um aplicativo
+**Android** utilizando **Bluetooth Low Energy (BLE)**.
 
+A comunicação é feita via **GATT**, permitindo:
 
-### ESP32-CAM
-<p align="center">
-  <img src="img/esp.jpg" width="300"/>
-  <img src="img/espApp.jpg" width="300"/>
-</p>
+-   📡 Conexão direta via BLE (sem Wi-Fi)
+-   📸 Envio de imagens em **pacotes fragmentados**
+-   ✅ Controle de **ACK (confirmação de recebimento)**
+-   📦 Ajuste de **MTU** para otimizar throughput
+-   💡 Controle de flash via característica BLE
+-   🔒 100% offline, sem internet
 
-### Aplicativo Android
-<p align="center">
-  <img src="img/app.jpg" width="300"/>
-</p>
-
----
-
-## 🚀 Visão Geral
-
-- 📡 ESP32-CAM cria um **Wi‑Fi AP próprio**
-- 📱 Aplicativo Android se conecta manualmente ao Wi‑Fi da câmera
-- 🔍 App verifica a câmera via endpoint `/status`
-- 📸 Foto capturada via `/photo`
-- 💡 Flash controlado via `/flash/on` ou `/flash/off`
-- ❌ Sem cloud, sem internet, sem permissões invasivas
-
----
-
+------------------------------------------------------------------------
 
 ## 🧩 Arquitetura
 
-```
-[ Android App ]  --->  HTTP  --->  [ ESP32-CAM ]
-       |                          |- /status
-       |                          |- /photo
-       |                          |- /flash
-       |
-   Wi-Fi AP (PocketPointCam_AP)
-```
+    [ Android App ]
+            |
+            |   BLE (GATT)
+            v
+    [ ESP32-CAM ]
+       |- Service: CameraService
+           |- Characteristic: Status
+           |- Characteristic: PhotoChunk
+           |- Characteristic: FlashControl
+           |- Characteristic: Ack
 
+------------------------------------------------------------------------
 
+## 🚀 Visão Geral
+
+-   📶 ESP32-CAM atua como **BLE Peripheral**
+-   📱 Android atua como **BLE Central**
+-   🔍 App descobre dispositivo `PocketPointCam`
+-   🔗 Conexão GATT estabelecida
+-   📏 Negociação de MTU (ex: 247 bytes)
+-   📸 Foto capturada sob comando
+-   📦 Imagem dividida em múltiplos pacotes
+-   ✅ Cada pacote exige confirmação (ACK)
+-   🔄 Reenvio automático em caso de falha
+
+------------------------------------------------------------------------
 
 ## 📦 Tecnologias Utilizadas
 
 ### ESP32-CAM
-- Arduino Framework
-- WebServer (HTTP)
-- esp_camera
+
+-   Arduino Framework
+-   ESP32 BLE Library
+-   esp_camera
+-   Fragmentação manual de buffer JPEG
 
 ### Android
-- Kotlin
-- Android Studio
-- HTTPUrlConnection
-- AlertDialog
 
----
+-   Kotlin
+-   Android Studio
+-   BluetoothLeScanner
+-   BluetoothGatt
+-   Negotiated MTU
+-   Controle manual de ACK
 
-## 📡 Configuração do Wi‑Fi da Câmera
+------------------------------------------------------------------------
 
-O ESP32-CAM cria automaticamente o seguinte ponto de acesso:
+## 📡 Estrutura BLE (GATT)
 
-- **SSID:** `PocketPointCam_AP`
-- **Senha:** `*PocketPointCam@2026`
-- **IP:** `192.168.4.1`
+### 🔹 Service UUID
 
-O aplicativo **não manipula o Wi‑Fi do Android**. O usuário conecta manualmente e o app apenas testa a comunicação.
+    Camera Service UUID
 
----
+### 🔹 Characteristics
 
-## 🔗 Endpoints do ESP32-CAM
+#### ✅ Status
 
-### ✅ Status
-```
-GET /status
-```
-Retorno esperado:
-```json
+-   Tipo: Read / Notify
+-   Retorno:
+
+``` json
 {"status":"ok"}
 ```
 
----
+------------------------------------------------------------------------
 
-### 📸 Capturar Foto
-```
-GET /photo
-```
-Retorna uma imagem JPEG capturada pela câmera.
+#### 📸 PhotoChunk
 
----
+-   Tipo: Notify
+-   Envia fragmentos da imagem JPEG
+-   Tamanho do pacote baseado no MTU negociado
 
-### 💡 Flash ON / OFF
-```
-GET /flash/on   // liga
-GET /flash/off  // desliga
-```
+------------------------------------------------------------------------
 
----
+#### 💡 FlashControl
+
+-   Tipo: Write
+-   Valores:
+    -   `0x01` → Flash ON
+    -   `0x00` → Flash OFF
+
+------------------------------------------------------------------------
+
+#### 🔁 Ack
+
+-   Tipo: Write
+-   Usado pelo app para confirmar recebimento de cada pacote
+-   Caso o ACK não seja recebido, o pacote é reenviado
+
+------------------------------------------------------------------------
 
 ## 📱 Funcionalidades do App Android
 
-- 🔘 Botão **Conectar câmera**
-- 🔐 Verificação de conexão via `/status`
-- 📸 Botão **Tirar Foto** (ativado somente quando conectado)
-- 💡 Botão **Flash ON/OFF** (ativado somente quando conectado)
-- ❌ MessageBox com passo a passo caso a câmera não seja encontrada
+-   🔍 Scan BLE para encontrar `PocketPointCam`
+-   🔗 Conexão GATT
+-   📏 Solicitação de MTU máximo suportado
+-   📸 Botão **Tirar Foto**
+-   💡 Botão **Flash ON/OFF**
+-   📦 Reconstrução da imagem a partir dos chunks recebidos
+-   💾 (Planejado) Salvar imagem no armazenamento local
 
----
+------------------------------------------------------------------------
 
-## 🖥️ Interface do App
+## 🔄 Fluxo de Envio da Imagem
 
-Fluxo da UI:
+1.  App envia comando "Capturar"
+2.  ESP32-CAM captura imagem JPEG
+3.  Buffer é dividido em pacotes menores (MTU - overhead)
+4.  ESP envia pacote via Notify
+5.  App envia ACK
+6.  Próximo pacote é enviado
+7.  Processo repete até finalizar imagem
 
-1. App inicia
-2. Botões de foto e flash desativados
-3. Usuário clica em **Conectar câmera**
-4. Se `/status` responder:
-   - Botões são liberados
-5. Se não responder:
-   - App exibe instruções de conexão (SSID, senha e IP)
-
----
+------------------------------------------------------------------------
 
 ## 🛠️ Como Rodar o Projeto
 
 ### ESP32-CAM
-1. Abra o projeto no Arduino IDE
-2. Selecione a placa **AI Thinker ESP32-CAM**
-3. Configure a porta correta
-4. Faça upload do firmware
 
----
+1.  Abra o projeto no Arduino IDE
+2.  Selecione a placa **AI Thinker ESP32-CAM**
+3.  Configure a porta correta
+4.  Faça upload do firmware
+
+------------------------------------------------------------------------
 
 ### Android App
-1. Abra o projeto no Android Studio
-2. Verifique se o `AndroidManifest.xml` contém:
 
-```xml
-android:usesCleartextTraffic="true"
-```
+1.  Abra o projeto no Android Studio
+2.  Verifique permissões BLE no `AndroidManifest.xml`
+3.  Ative Bluetooth no celular
+4.  Abra o app e conecte ao dispositivo `PocketPointCam`
 
-3. Compile e instale no celular
-4. Conecte o celular ao Wi‑Fi `PocketPointCam_AP`
-5. Abra o app e toque em **Conectar câmera**
-
----
+------------------------------------------------------------------------
 
 ## 🔐 Permissões Android
 
-O aplicativo utiliza apenas:
-- Acesso à internet (HTTP local)
+O aplicativo utiliza: - Bluetooth - Bluetooth Admin - Bluetooth Scan /
+Connect (Android 12+)
 
-❌ Não utiliza:
-- Localização
-- Bluetooth
-- Dados móveis
+❌ Não utiliza: - Internet - Localização (exceto se exigido pela versão
+do Android para scan BLE)
 
----
+------------------------------------------------------------------------
 
 ## 🧪 Status do Projeto
 
-- ✅ Conexão com ESP32-CAM
-- ✅ Captura de foto
-- ✅ Controle de flash
-- ⏳ Preview ao vivo (planejado)
-- ⏳ Salvar foto no celular
-- ⏳ QR Code automático do Wi‑Fi
+-   ✅ Conexão BLE
+-   ✅ Negociação de MTU
+-   ✅ Envio fragmentado com ACK
+-   ⏳ Compressão adaptativa baseada no MTU
+-   ⏳ Preview ao vivo via stream BLE (experimental)
 
----
+------------------------------------------------------------------------
 
 ## 📌 Próximas Ideias
 
-- Preview MJPEG em tempo real
-- Filtros de imagem no app
-- Armazenamento local no celular
+-   Ajuste dinâmico de qualidade JPEG
+-   Controle de taxa de envio (throttling)
+-   Modo burst
+-   App multiplataforma (Flutter)
 
----
+------------------------------------------------------------------------
 
 ## 🤝 Contribuição
 
-Sinta-se à vontade para abrir **issues**, **pull requests** ou sugerir melhorias.
+Sinta-se à vontade para abrir **issues**, **pull requests** ou sugerir
+melhorias.
 
----
+------------------------------------------------------------------------
 
 ## 📄 Licença
 
-Este projeto é open‑source e pode ser adaptado livremente para fins educacionais e experimentais.
+Projeto open-source para fins educacionais e experimentais.
 
----
+------------------------------------------------------------------------
 
-👤 Autor: Patrick Calorio
-
-Projeto criado para estudos em **IoT, visão computacional e mobile**.
-
+👤 Autor: Patrick Calorio\
+Projeto criado para estudos em **IoT, BLE, sistemas embarcados e
+mobile**.
